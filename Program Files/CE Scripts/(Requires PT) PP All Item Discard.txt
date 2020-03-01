@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CheatTable>
+  <CheatEntries>
+    <CheatEntry>
+      <ID>1337089466</ID>
+      <Description>"Param Patcher All Discardable"</Description>
+      <LastState/>
+      <VariableType>Auto Assembler Script</VariableType>
+      <AssemblerScript>[ENABLE]
+{$lua}
+if syntaxcheck then return end
+--Declare Param Objects
+local goodsParam = EquipParamGoods:new("GoodsOriginal")
+local accessoryParam = EquipParamAccessory:new("AccessoryOriginal")
+local weaponParam = EquipParamWeapon:new("WeaponOriginal")
+local armourParam = EquipParamProtector:new("ArmourOriginal")
+
+--Patch Params
+goodsParam:patchAllBinary(0x45, 1, 3)
+accessoryParam:patchAllBinary(0x3C, 1, 3)
+weaponParam:patchAllBinary(0x105, 1, 1)
+armourParam:patchAllBinary(0xDF, 1, 0)
+
+[DISABLE]
+{$lua}
+if syntaxcheck then return end
+paramUtils:restore("GoodsOriginal")
+paramUtils:restore("AccessoryOriginal")
+paramUtils:restore("WeaponOriginal")
+paramUtils:restore("ArmourOriginal")
+</AssemblerScript>
+    </CheatEntry>
+  </CheatEntries>
+</CheatTable>
