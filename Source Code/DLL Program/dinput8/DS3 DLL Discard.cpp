@@ -120,6 +120,13 @@ int main()
 
 				if (invalidItemsFound)
 				{
+					//Check Invalid Return
+					if (invalidItemsFound == 0xF001)
+					{
+						printf_s("Error scanning inventory! Program can't read character memory\n");
+						break;
+					}
+
 					printf_s("Warning! %d invalid items were found in your inventory. Would you like to delete them? (Y/N)\n", invalidItemsFound);
 
 					std::cin >> charInput;
