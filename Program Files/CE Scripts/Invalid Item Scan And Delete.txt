@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CheatTable>
+  <CheatEntries>
+    <CheatEntry>
+      <ID>1337089460</ID>
+      <Description>"Invalid Item Scan &amp; Delete"</Description>
+      <Options moHideChildren="1"/>
+      <LastState/>
+      <VariableType>Auto Assembler Script</VariableType>
+      <AssemblerScript>[ENABLE]
+alloc(itemScan,128,DarkSoulsIII.exe)
+registersymbol(itemScan)
+
+//Vars
+globalalloc(itemScanOutput,1)
+globalalloc(itemTempBuffer,128)
+globalalloc(itemValidationTable,32)
+
+itemScanOutput:
+dq 0
+
+itemValidationTable:
+dq 140E33420 //Weapon Lookup
+dq 140E2C980 //Armour Lookup
+dq 140E16A50 //Accessory Lookup
+dq 0 //Missing
+dq 140E22270 //Goods Lookup
+
+label(scanInventory)
+label(deleteItem)
+label(returnTrue)
+label(invalidPtrReturn)
+
+//createthread(itemScan)
+
+itemScan:
+mov rbx,[144740178] //Base Ptr
+test rbx,rbx
+jz invalidPtrReturn
+mov rbx,[rbx+10]
+test rbx,rbx
+jz invalidPtrReturn
+//Start Address
+mov r12,[rbx+3E8]
+lea r12,[r12+4]
+//Max Item Amount
+mov r13,[rbx+470]
+mov r13,[r13+10]
+mov r13d,dword ptr[r13+1BC] //Max Item Amt
+xor r14d,r14d //Item Amount Record
+xor r15d,r15d //Item Offset Record
+call scanInventory
+ret
+
+
+/*
+  [ARGS}:
+  r12 - Item Start
+  r13d - Max Item Amount
+  r14d - Number Of Items Checked
+  r15d - Current Offset
+*/
+scanInventory:
+//Check
+cmp r14d,r13d
+je returnTrue
+//Validate Item
+sub rsp,98
+mov esi,dword ptr[r12+r15d]
+test esi,esi
+js scanInventory+58
+lea rcx,[itemTempBuffer]
+mov edx,esi
+and edx,0FFFFFFF
+and esi,F0000000
+shr esi,1C
+imul esi,esi,8
+mov rsi,qword ptr[itemValidationTable+esi]
+call rsi
+//Check Return
+mov rcx,[itemTempBuffer+8]
+test rcx,rcx
+jnz scanInventory+58
+call deleteItem
+//Continue Function
+add rsp,98 //scanInventory+58
+inc r14d
+add r15d,10
+jmp scanInventory
+
+deleteItem:
+sub rsp,28
+mov rcx,r15d
+sub rcx,4
+lea rcx,[r12+rcx]
+call 140A28190
+add rsp,28
+inc [itemScanOutput]
+ret
+
+returnTrue:
+mov al,1
+ret
+
+invalidPtrReturn:
+ret
+
+[DISABLE]
+dealloc(itemScan)
+dealloc(itemScanOutput)
+dealloc(itemTempBuffer)
+dealloc(itemValidationTable)
+unregistersymbol(itemScan)
+unregistersymbol(itemScanOutput)
+unregistersymbol(itemTempBuffer)
+unregistersymbol(itemValidationTable)
+</AssemblerScript>
+      <CheatEntries>
+        <CheatEntry>
+          <ID>1337089461</ID>
+          <Description>"Total Items Deleted"</Description>
+          <VariableType>Byte</VariableType>
+          <Address>itemScanOutput</Address>
+        </CheatEntry>
+        <CheatEntry>
+          <ID>1337089464</ID>
+          <Description>"Run Thread"</Description>
+          <LastState/>
+          <VariableType>Auto Assembler Script</VariableType>
+          <AssemblerScript>[ENABLE]
+createthread(itemScan)
+[DISABLE]
+</AssemblerScript>
+        </CheatEntry>
+      </CheatEntries>
+    </CheatEntry>
+  </CheatEntries>
+</CheatTable>

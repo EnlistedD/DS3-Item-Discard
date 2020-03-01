@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CheatTable>
+  <CheatEntries>
+    <CheatEntry>
+      <ID>1337089455</ID>
+      <Description>"Set All Item Discard"</Description>
+      <LastState/>
+      <VariableType>Auto Assembler Script</VariableType>
+      <AssemblerScript>[ENABLE]
+alloc(setAllDiscard,128,DarkSoulsIII.exe)
+registersymbol(setAllDiscard)
+
+label(changeAllOffset)
+
+createthread(setAllDiscard)
+
+setAllDiscard:
+//EPG
+mov rbx,[144782838] //Param
+mov rcx,[rbx+148] //Param-&gt;EquipParamGoods
+mov rcx,[rcx+68]
+mov rcx,[rcx+68]
+mov edx,0000F7F0 //Last Offset
+mov r8d,30 //Start Offset
+mov r9d,45 //Offset To Edit
+mov sil,8 //New Value
+call changeAllOffset
+//EPP
+mov rcx,[rbx+B8] //Param-&gt;EquipParamProtector
+mov rcx,[rcx+68]
+mov rcx,[rcx+68]
+mov edx,0003D4D8 //Last Offset
+mov r8d,30 //Start Offset
+mov r9d,DF //Offset To Edit
+mov sil,1 //New Value
+call changeAllOffset
+//EPW
+mov rcx,[rbx+70] //Param-&gt;EquipParamWeapon
+mov rcx,[rcx+68]
+mov rcx,[rcx+68]
+mov edx,00183EC8 //Last Offset
+mov r8d,30 //Start Offset
+mov r9d,105 //Offset To Edit
+mov sil,2 //New Value
+call changeAllOffset
+//EPA
+mov rcx,[rbx+100] //Param-&gt;EquipParamAccessory
+mov rcx,[rcx+68]
+mov rcx,[rcx+68]
+mov edx,00003E38 //Last Offset
+mov r8d,30 //Start Offset
+mov r9d,3C //Offset To Edit
+mov sil,8 //New Value
+call changeAllOffset
+ret
+
+changeAllOffset:
+//Scan For Offset
+mov eax,dword ptr[rcx+r8d]
+add r8d,18 //Dist Between IDs
+test eax,eax
+jz changeAllOffset
+//Set Discard
+add eax,r9d
+or byte ptr[rcx+eax],sil
+//Check Last Offset
+sub eax,r9d
+cmp eax,edx
+jnz changeAllOffset
+ret
+
+[DISABLE]
+dealloc(setAllDiscard)
+unregistersymbol(setAllDiscard)
+</AssemblerScript>
+    </CheatEntry>
+  </CheatEntries>
+</CheatTable>
