@@ -3,7 +3,7 @@
 
 # NOTE: I Highly Recommend Creating A Game Back-up Before Using This Program To Be Sure That No Mistakes Occur And This Program Works Properly For You
 
-# How Do I Prevent Cheaters From Giving Me Invalid Items?
+[How Do I Prevent Cheaters From Giving Me Invalid Items?]
 The best way to prevent cheaters from giving you any invalid items and stop other cheats is to download the DS3 PVP Watchdog mod available at Nexus Mods (Link: https://www.nexusmods.com/darksouls3/mods/352)
 
 # What Is DS3 Item Discard?
