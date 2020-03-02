@@ -3,6 +3,8 @@
 
 # NOTE: I Highly Recommend Creating A Game Back-up Before Using This Program To Be Sure That No Mistakes Occur And This Program Works Properly For You (While This Program Should Be Safe To My Knowledge, Use In Offline Mode Is Highly Recommended For Extra Pre-caution).
 
+# Program Is Also Available On Nexus Mods: https://www.nexusmods.com/darksouls3/mods/469
+
 # How Do I Prevent Cheaters From Giving Me Invalid Items?
 The best way to prevent cheaters from giving you any invalid items and stop other cheats is to download the DS3 PVP Watchdog mod available at Nexus Mods (Link: https://www.nexusmods.com/darksouls3/mods/352)
 
