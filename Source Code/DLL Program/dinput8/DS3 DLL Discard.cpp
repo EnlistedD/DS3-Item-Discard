@@ -9,6 +9,8 @@ int main()
 	bool programActive = true;
 	DWORD64 procModule = NULL;
 	DWORD invalidItemsFound = NULL;
+	DWORD recentAmount = NULL;
+	//DWORD64 recentItemAddrs[100];
 
 	//Param Offset Declarations
 	OffsetStruct goodsParam =
@@ -53,8 +55,10 @@ int main()
 
 		printf_s("Welcome To DS3 Item Discard, Please Load A Character And Select What You'd Like To Do:\n"
 			"1. Allow Discard Through Item Params\n"
-			"2. Scan For Invalid Items (Only Works For Invalid Param Items)\n"
-			"3. Exit Program\n");
+			"2. Scan Entire Inventory For Invalid Items\n"
+			"3. List Recently Aquired Items\n"
+			"4. Mod Information\n"
+			"5. Exit Program\n");
 
 		//Validate Input
 		if (!inputHandler(&userInput))
@@ -64,8 +68,10 @@ int main()
 				system("cls");
 				printf_s("Error! Invalid Input Was Detected, Please Reenter Choice:\n"
 					"1. Allow Discard Through Item Params\n"
-					"2. Scan For Invalid Items (Only Works For Invalid Param Items)\n"
-					"3. Exit Program\n");
+					"2. Scan Entire Inventory For Invalid Items\n"
+					"3. List Recently Aquired Items\n"
+					"4. Mod Information\n"
+					"5. Exit Program\n");
 			} while (!inputHandler(&userInput));
 		}
 
@@ -102,10 +108,11 @@ int main()
 			system("pause");
 
 			break;
-		case 2:		//Scan For Invalid Param Items
-			printf_s("Alert! This feature should only be used if you tried to discard the invalid item after using menu option 1 and it didn't work.\n"
-				"This option will try to identify if your inventory contains any invalid items that don't exist within any game params and ask you permission to\n"
-				"delete them through this program.\n"
+		case 2:		//Scan For Invalid Items
+			printf_s("Alert! This feature will try to identify any invalid items in your inventory and allow you to delete them, although there\n"
+				"is a chance that it could identify false positives. If there are any false positives then please make a bug report on Nexus mods\n"
+				"with the item info listed in the console and I can figure out why that item was falsely flagged and fix it.\n"
+				"Also you should double check your inventory after use of this feature to make sure it worked properly and that all of your invalid items were deleted.\n"
 				"Would you like to continue and scan your inventory? (Y/N)");
 
 			std::cin >> charInput;
@@ -121,13 +128,13 @@ int main()
 				if (invalidItemsFound)
 				{
 					//Check Invalid Return
-					if (invalidItemsFound == 0xF001)
+					if (invalidItemsFound == ErrorInvalidPtr)
 					{
 						printf_s("Error scanning inventory! Program can't read character memory\n");
 						break;
 					}
 
-					printf_s("Warning! %d invalid items were found in your inventory. Would you like to delete them? (Y/N)\n", invalidItemsFound);
+					printf_s("\n\nScan completed successfully!\nWarning! %d invalid items were found in your inventory. Would you like to delete them? (Y/N)\n", invalidItemsFound);
 
 					std::cin >> charInput;
 
@@ -145,8 +152,8 @@ int main()
 					}
 				}
 				else
-					printf_s("Your inventory was successfully scanned and no invalid param items were detected!\n");
-					
+					printf_s("\n\nYour inventory was successfully scanned and no invalid items were detected!\n");
+
 				break;
 			default:
 				printf_s("Your inventory was not scanned.\n");
@@ -155,7 +162,43 @@ int main()
 
 			system("pause");
 			break;
-		case 3:		//Exit Program
+
+		case 3:		//List Recently Aquired Items
+			
+			printf_s("Enter the amount of items you'd like to check (Min: 1, Max: 100)\n");
+
+			//Get Input
+			if (!inputHandler((int*)&recentAmount))
+			{
+				system("cls");
+				printf_s("Error getting input! (Valid Input Example \"20\")\n");
+				system("pause");
+				break;
+			}
+
+			system("cls");
+
+			//Check Valid Amount
+			if (recentAmount < 1 || recentAmount > 100)
+			{
+				printf_s("Error, can't display list of less than 1 or greater than 100 items!\n");
+				system("pause");
+				break;
+			}
+
+			//Scan Inventory
+			listRecentItems(procModule, recentAmount);
+
+			break;
+		case 4:		//Basic Mod Information Program
+			printf_s("Author: EnlistedD\n");
+			printf_s("Mod Name: DS3 Item Discard\n");
+			printf_s("Mod Version: V. 1.0.1\n");
+			printf_s("A special thanks to u/LukeYui for help testing and help creating this mod\n");
+			printf_s("\n\nFor more information about this mod or to submit bug reports, go to: www.nexusmods.com/darksouls3/mods/469\n");
+			system("pause");
+			break;
+		case 5:		//Exit Program
 			programActive = false;
 			break;
 		default:
@@ -260,12 +303,12 @@ DWORD scanInventory(DWORD64 pModule, BOOL deleteFlag)
 	tempPtr = *(DWORD64*)(pModule + chrBase);
 
 	if (tempPtr == NULL)
-		return 0xF001;
+		return ErrorInvalidPtr;
 	
 	tempPtr = *(DWORD64*)(tempPtr + 0x10);
 
 	if (tempPtr == NULL)
-		return 0xF001;
+		return ErrorInvalidPtr;
 
 	tempPtr2 = tempPtr;
 
@@ -279,13 +322,23 @@ DWORD scanInventory(DWORD64 pModule, BOOL deleteFlag)
 
 	maxItems = *(DWORD*)(tempPtr2 + 0x1BC);
 
+	//Clear One Items List
+	for (int i = 0; i < sizeof(onlyOneItems); i++)
+		onlyOneItems[i] = false;
+
 	//Loop To Scan For Items
 	do
 	{
-		DWORD currentItem, itemType;
+		DWORD currentItem, itemType, itemUpgrade, currItemCopy;
 		DWORD itemBuffer[28];
 
+		//Item Valid Vars
+		std::wstring itemName;
+		DWORD64 itemNTemp;
+		bool itemIsValid = true; //Start Iff Valid
+
 		currentItem = *(DWORD*)(startAddr + offsetRec);
+		currItemCopy = currentItem;
 
 		if (currentItem == 0xFFFFFFFF)
 		{
@@ -298,36 +351,748 @@ DWORD scanInventory(DWORD64 pModule, BOOL deleteFlag)
 		itemType >>= 0x1C;
 		currentItem = (currentItem & 0x0FFFFFFF);
 
+		//Get Item Name
+		itemNTemp = getItemName(&currItemCopy);
+
+		itemName = (wchar_t*)itemNTemp;
+
 		switch (itemType)
 		{
 		case 0:		//Weapon
 			validateItem(itemBuffer, currentItem, 0x140E33420);
+
+			//Get Upgrade
+			itemUpgrade = itemBuffer[0] - itemBuffer[4];
+
+			//Get Name
+			itemNTemp = getItemName(&itemBuffer[4]);
+
+			itemName = (wchar_t*)itemNTemp;
+
+			if (itemUpgrade != 0)
+			{
+				itemName += L"+";
+				itemName += std::to_wstring(itemUpgrade);
+			}
+
+			/*
+			printf_s("\nCurrently Scanning Weapon:\n"
+				"Weapon ID: %11X\n"
+				"Weapon ID+: %11X\n"
+				"Upgrade Level:%d\n"
+				"Name: %ws\n", itemBuffer[0], itemBuffer[4], itemUpgrade, itemName.c_str());
+			*/
+
+			//Check Valid Param
+			if ((DWORD64)itemBuffer[2] == NULL)
+			{
+				invalidItemAmt++;
+				itemIsValid = false;
+
+				if (!deleteFlag)
+					printf_s("Weapon ID %08X Flagged, Reason: Doesn't Have A Valid Param ID (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+				else
+					printf_s("Deleting Invalid Weapon ID %08X (Name: %ws) (Reason: Doesn't Have A Valid Param ID)\n\n", currItemCopy, itemName.c_str());
+			}
+
+			//Check Upgrade Level
+			if (itemBuffer[6] < 1600 && itemIsValid)
+			{
+				if (itemUpgrade > 10)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Weapon ID %08X Flagged, Reason: Invalid Upgrade Level (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Weapon ID %08X (Name: %ws) (Reason: Invalid Upgrade Level)\n\n", currItemCopy, itemName.c_str());
+				}
+			}
+			else
+			{
+				if (itemUpgrade > 5 && itemIsValid)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Weapon ID %08X Flagged, Reason: Invalid Upgrade Level (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Weapon ID %08X (Name: %ws) (Reason: Invalid Upgrade Level)\n\n", currItemCopy, itemName.c_str());
+				}
+			}
+
+			//If Item Hasn't Been Flagged; Check ID
+			if (itemIsValid)
+			{
+				itemIsValid = false;
+
+				//Check Valid ID
+				for (int i = 0; i < (sizeof(validWeapon) / 4); i++)
+				{
+					if (itemBuffer[4] == validWeapon[i])
+					{
+						itemIsValid = true;
+						break;
+					}
+				}
+
+				//If Item Isn't Valid After Scan
+				if (!itemIsValid)
+				{
+					invalidItemAmt++;
+
+					if(!deleteFlag)
+						printf_s("Weapon ID %08X Flagged, Reason: Not On Valid Item List (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Weapon ID %08X (Name: %ws) (Reason: Not On Valid Item List)\n\n", currItemCopy, itemName.c_str());
+				}
+			}
+
 			break;
 		case 1:		//Armour
 			validateItem(itemBuffer, currentItem, 0x140E2C980);
-			break;
+
+			//Check Valid Param
+			if ((DWORD64)itemBuffer[2] == NULL)
+			{
+				invalidItemAmt++;
+				itemIsValid = false;
+
+				if(!deleteFlag)
+					printf_s("Armour ID %08X Flagged, Reason: Doesn't Have A Valid Param ID (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+				else
+					printf_s("Deleting Invalid Armour ID %08X (Name: %ws) (Reason: Doesn't Have A Valid Param ID)\n\n", currItemCopy, itemName.c_str());
+			}
+
+			if (itemIsValid)
+			{
+				itemIsValid = false;
+
+				//Check Valid ID
+				for (int i = 0; i < (sizeof(validArmour) / 4); i++)
+				{
+					if (currItemCopy == validArmour[i])
+					{
+						itemIsValid = true;
+						break;
+					}
+				}
+
+				//If Item Isn't Valid After Check
+				if (!itemIsValid)
+				{
+					invalidItemAmt++;
+
+					if(!deleteFlag)
+						printf_s("Armour ID %08X Flagged, Reason: Not On Valid Item List (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Armour ID %08X (Name: %ws) (Reason: Not On Valid Item List)\n\n", currItemCopy, itemName.c_str());
+				}
+			}
+
+				break;
 		case 2:		//Accessory
 			validateItem(itemBuffer, currentItem, 0x140E16A50);
+
+			//Check Valid Param
+			if ((DWORD64)itemBuffer[2] == NULL)
+			{
+				invalidItemAmt++;
+				itemIsValid = false;
+
+				if(!deleteFlag)
+					printf_s("Accessory ID %08X Flagged, Reason: Doesn't Have A Valid Param ID (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+				else
+					printf_s("Deleting Invalid Accessory ID %08X (Name: %ws) (Reason: Doesn't Have A Valid Param ID)\n\n", currItemCopy, itemName.c_str());
+			}
+
+			if (itemIsValid)
+			{
+				itemIsValid = false;
+
+				for (int i = 0; i < (sizeof(validAccessory) / 4); i++)
+				{
+					if (currItemCopy == validAccessory[i])
+					{
+						itemIsValid = true;
+						break;
+					}
+				}
+
+				//If Item Isn't Valid After Check
+				if (!itemIsValid)
+				{
+					invalidItemAmt++;
+
+					if(!deleteFlag)
+						printf_s("Accessory ID %08X Flagged, Reason: Not On Valid Item List (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Accessory ID %08X (Name: %ws) (Reason: Not On Valid Item List)\n\n", currItemCopy, itemName.c_str());
+				}
+			}
+
+			//Check Items That Can Only Occur Once
+			switch (currItemCopy)
+			{
+			case 0x2000274C: //WOB Covenant
+				if (onlyOneItems[4] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Accessory ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Accessory ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[4] = true;
+				}
+				break;
+			case 0x20002738: //WOS Covenant
+				if (onlyOneItems[5] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Accessory ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Accessory ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[5] = true;
+				}
+				break;
+			case 0x20002710: //DMB Covenant
+				if (onlyOneItems[6] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Accessory ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Accessory ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[6] = true;
+				}
+				break;
+			case 0x20002724: //WOF Covenant
+				if (onlyOneItems[7] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Accessory ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Accessory ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[7] = true;
+				}
+				break;
+			case 0x2000272E: //AF Covenant
+				if (onlyOneItems[8] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Accessory ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Accessory ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[8] = true;
+				}
+				break;
+			case 0x20002742: //MM Covenant
+				if (onlyOneItems[9] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Accessory ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Accessory ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[9] = true;
+				}
+				break;
+			case 0x20002756: //BS Covenant
+				if (onlyOneItems[10] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Accessory ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Accessory ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[10] = true;
+				}
+				break;
+			case 0x20002760: //RF Covenant
+				if (onlyOneItems[11] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Accessory ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Accessory ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[11] = true;
+				}
+				break;
+			case 0x2000276A: //SOTC Covenant
+				if (onlyOneItems[12] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Accessory ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Accessory ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[12] = true;
+				}
+				break;
+			}
+
 			break;
 		case 4:		//Goods
 			validateItem(itemBuffer, currentItem, 0x140E22270);
+
+			//Check Valid Param
+			if ((DWORD64)itemBuffer[2] == NULL)
+			{
+				invalidItemAmt++;
+				itemIsValid = false;
+
+				if(!deleteFlag)
+					printf_s("Item ID %08X Flagged, Reason: Doesn't Have A Valid Param ID (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+				else
+					printf_s("Deleting Invalid Item ID %08X (Name: %ws) (Reason: Doesn't Have A Valid Param ID)\n\n", currItemCopy, itemName.c_str());
+			}
+
+			if (itemIsValid)
+			{
+				itemIsValid = false;
+
+				for (int i = 0; i < (sizeof(validGoods) / 4); i++)
+				{
+					if (currItemCopy == validGoods[i])
+					{
+						itemIsValid = true;
+						break;
+					}
+				}
+
+				//If Item Isn't Valid After Check
+				if (!itemIsValid)
+				{
+					invalidItemAmt++;
+
+					if(!deleteFlag)
+						printf_s("Item ID %08X Flagged, Reason: Not On Valid Item List (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Item ID %08X (Name: %ws) (Reason: Not On Valid Item List)\n\n", currItemCopy, itemName.c_str());
+				}
+			}
+
+			switch (currItemCopy)
+			{
+			case 0x40000096: //:Estus Flask
+			case 0x40000097: //:Estus Flask
+			case 0x40000098: //:Estus Flask+1
+			case 0x40000099: //:Estus Flask+1
+			case 0x4000009A: //:Estus Flask+2
+			case 0x4000009B: //:Estus Flask+2
+			case 0x4000009C: //:Estus Flask+3
+			case 0x4000009D: //:Estus Flask+3
+			case 0x4000009E: //:Estus Flask+4
+			case 0x4000009F: //:Estus Flask+4
+			case 0x400000A0: //:Estus Flask+5
+			case 0x400000A1: //:Estus Flask+5
+			case 0x400000A2: //:Estus Flask+6
+			case 0x400000A3: //:Estus Flask+6
+			case 0x400000A4: //:Estus Flask+7
+			case 0x400000A5: //:Estus Flask+7
+			case 0x400000A6: //:Estus Flask+8
+			case 0x400000A7: //:Estus Flask+8
+			case 0x400000A8: //:Estus Flask+9
+			case 0x400000A9: //:Estus Flask+9
+			case 0x400000AA: //:Estus Flask+10
+			case 0x400000AB: //:Estus Flask+10
+				if (onlyOneItems[0] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Item ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Item ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[0] = true;
+				}
+				break;
+			case 0x400000BE: //:Ashen Estus Flask
+			case 0x400000BF: //:Ashen Estus Flask
+			case 0x400000C0: //:Ashen Estus Flask+1
+			case 0x400000C1: //:Ashen Estus Flask+1
+			case 0x400000C2: //:Ashen Estus Flask+2
+			case 0x400000C3: //:Ashen Estus Flask+2
+			case 0x400000C4: //:Ashen Estus Flask+3
+			case 0x400000C5: //:Ashen Estus Flask+3
+			case 0x400000C6: //:Ashen Estus Flask+4
+			case 0x400000C7: //:Ashen Estus Flask+4
+			case 0x400000C8: //:Ashen Estus Flask+5
+			case 0x400000C9: //:Ashen Estus Flask+5
+			case 0x400000CA: //:Ashen Estus Flask+6
+			case 0x400000CB: //:Ashen Estus Flask+6
+			case 0x400000CC: //:Ashen Estus Flask+7
+			case 0x400000CD: //:Ashen Estus Flask+7
+			case 0x400000CE: //:Ashen Estus Flask+8
+			case 0x400000CF: //:Ashen Estus Flask+8
+			case 0x400000D0: //:Ashen Estus Flask+9
+			case 0x400000D1: //:Ashen Estus Flask+9
+			case 0x400000D2: //:Ashen Estus Flask+10
+			case 0x400000D3: //:Ashen Estus Flask+10
+				if (onlyOneItems[1] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Item ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Item ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[1] = true;
+				}
+				break;
+			case 0x40000067: //:Black Separation Crystal
+				if (onlyOneItems[2] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Item ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Item ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[2] = true;
+				}
+				break;
+			case 0x40000075: //:Darksign
+				if (onlyOneItems[3] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Item ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Item ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[3] = true;
+				}
+				break;
+			case 0x40000064: //:White Sign Soapstone
+				if (onlyOneItems[13] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Item ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Item ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[13] = true;
+				}
+				break;
+			case 0x40000065: //:Red Sign Soapstone
+				if (onlyOneItems[14] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Item ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Item ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[14] = true;
+				}
+				break;
+			case 0x40000066: //:Red Eye Orb
+				if (onlyOneItems[15] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Item ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Item ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[15] = true;
+				}
+				break;
+			case 0x4000006C: //:Roster of Knights
+				if (onlyOneItems[16] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Item ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Item ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[16] = true;
+				}
+				break;
+			case 0x40000073: //:Black Eye Orb
+				if (onlyOneItems[17] == true)
+				{
+					invalidItemAmt++;
+					itemIsValid = false;
+
+					if(!deleteFlag)
+						printf_s("Item ID %08X Flagged, Reason: Too many in inventory (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Item ID %08X (Name: %ws) (Reason: Too many in inventory)\n\n", currItemCopy, itemName.c_str());
+				}
+				else
+				{
+					onlyOneItems[17] = true;
+				}
+				break;
+			}
+
 			break;
 		}
 
-		if ((DWORD64)itemBuffer[2] == NULL)
-		{
-			if (deleteFlag)
-			{
-				deleteItem((startAddr + (offsetRec - 0x4)));
-				invalidItemAmt++; //Keeps Record For Items Deleted W/ Flag Set
-			}
-			else
-				invalidItemAmt++;
-		}
+		//Delete Item If Flag Set
+		if (!itemIsValid && deleteFlag)
+			deleteItem((startAddr + (offsetRec - 0x4)));
 
 		itemCount++;
 		offsetRec += 0x10;
 	} while (itemCount != maxItems);
 
 	return invalidItemAmt;
+}
+
+DWORD listRecentItems(DWORD64 pModule, DWORD amount)
+{
+	//Vars
+	DWORD64 tempPtr = NULL, tempPtr2 = NULL, startAddr = NULL;
+	DWORD maxItems, currentItemAmt, itemCount = NULL, itemAmtRecord = NULL, currentItem, itemUpgrade;
+	DWORD itemBuffer[28]; //For Weapons
+
+	//Create Arrays For Scanned Item Addrs
+	DWORD64 * recentItemAddrs = new DWORD64[amount];
+	std::wstring * itemNameRecord = new std::wstring[amount];
+
+	//Clear Previous Address List
+	//for (int i = 0; i < (sizeof(recentItemAddrs) / 8); i++)
+		//recentItemAddrs[i] = 0x0;
+
+	tempPtr = *(DWORD64*)(pModule + chrBase);
+	if (tempPtr == NULL)
+	{
+		delete[] recentItemAddrs;
+		delete[] itemNameRecord;
+		return ErrorInvalidPtr;
+	}
+
+	tempPtr = *(DWORD64*)(tempPtr + 0x10);
+	if (tempPtr == NULL)
+	{
+		delete[] recentItemAddrs;
+		delete[] itemNameRecord;
+		return ErrorInvalidPtr;
+	}
+
+	tempPtr2 = tempPtr;
+
+	//Start Addr
+	tempPtr = *(DWORD64*)(tempPtr + 0x3E8);
+	startAddr = tempPtr + 0x4;
+
+	//Get Max Items
+	tempPtr2 = *(DWORD64*)(tempPtr2 + 0x470);
+	tempPtr2 = *(DWORD64*)(tempPtr2 + 0x10);
+
+	currentItemAmt = *(DWORD*)(tempPtr2 + 0x1C8);
+	maxItems = *(DWORD*)(tempPtr2 + 0x1BC);
+
+	currentItemAmt -= 2; //Has Two Extra Items For Some Reason
+
+	//Make Sure Item Amount Isn't Greater Than Selected Amount
+	if (amount > currentItemAmt)
+	{
+		printf_s("Error! Amount selected (%d) is greater than the current amount of items in your inventory (%d)\n", amount, currentItemAmt);
+		system("pause");
+
+		delete[] recentItemAddrs;
+		delete[] itemNameRecord;
+		return FALSE;
+	}
+
+	itemAmtRecord = (maxItems-1);
+
+	//List Most Recently Required Items
+	while (itemCount != amount)
+	{
+		//Get & Validate Current Item
+		currentItem = *(DWORD*)(startAddr + (itemAmtRecord * 0x10));
+
+		if (currentItem == 0xFFFFFFFF)
+		{
+			itemAmtRecord--;
+			continue;
+		}
+
+		std::wstring itemName;
+
+		//Check Is Weapon
+		if ((currentItem & 0xF0000000) >> 0x1C == 0)
+		{
+			validateItem(itemBuffer, currentItem, 0x140E33420);
+
+			//Get Upgrade
+			itemUpgrade = itemBuffer[0] - itemBuffer[4];
+
+			//Get Item Name
+			tempPtr = getItemName(&itemBuffer[4]);
+
+			itemName = (wchar_t*)tempPtr;
+
+			if (itemUpgrade != 0)
+			{
+				itemName += L"+";
+				itemName += std::to_wstring(itemUpgrade);
+			}
+
+			itemNameRecord[itemCount] = itemName;
+		}
+		else
+		{
+			//Get Item Name
+			tempPtr = getItemName(&currentItem);
+
+			itemName = (wchar_t*)tempPtr;
+
+			itemNameRecord[itemCount] = itemName;
+		}
+
+		//Save Address
+		recentItemAddrs[itemCount] = (DWORD64)(startAddr + ((itemAmtRecord * 0x10) - 4));
+
+		itemCount++;
+
+		//Display Item
+		//printf_s("Recent Item %d: %ws (ID: %08X) (DEBUG ADDR: %016llX)\n", itemCount, itemName.c_str(), currentItem, recentItemAddrs[itemCount-1]);
+		printf_s("Recent Item %d: %ws (ID: %08X)\n", itemCount, itemName.c_str(), currentItem);
+
+		itemAmtRecord--;
+	}
+
+	printf_s("\n\nProgram Sucessfully Finished Printing Out Recent Items!\n");
+	printf_s("\nPLEASE NOTE! If you scanned far back enough (far back to the point where you see your original armour\n");
+	printf_s("and original estus flask, you may see 1 ?GoodsName? item and a few \"Fists\" items\n");
+	printf_s("deletion of these items are not recommended as these items automatically spawn in your inventory when\n");
+	printf_s("you create a new character.\n\n");
+
+	printf_s("If You Wish To Delete Any Items, Type the number of the recently scanned item");
+	printf_s("(Example: \"1\" would delete \"%ws\")\n", itemNameRecord[0].c_str());
+	printf_s("Otherwise, type \"0\" to return to first menu\n");
+
+	//Allow Deletion Of Items
+	int userInput = 1;
+	char confirmDelete;
+
+	while (userInput != 0)
+	{
+		//Error Handling
+		if (!inputHandler(&userInput))
+		{
+			printf_s("\nError! Please reenter input: ");
+			continue;
+		}
+		else if (userInput < 0 || userInput > amount)
+		{
+			printf_s("\nError! Can't enter a number less than 0 or greater than selected amount! Please reenter input:");
+			continue;
+		}
+		else if (userInput == 0)
+			break;
+
+		printf_s("You have chosen to delete item number %d (Name: %ws), are you sure you'd like to delete this item? (Y/N) ", userInput, itemNameRecord[userInput-1].c_str());
+
+		std::cin >> confirmDelete;
+
+		switch (confirmDelete)
+		{
+		case 'y':
+		case 'Y':
+			deleteItem(recentItemAddrs[userInput-1]);
+
+			printf_s("\nItem deleted successfully!\n");
+
+			break;
+		default:
+			printf_s("\nItem was not deleted\n");
+		}
+	}
+
+	delete[] recentItemAddrs;
+	delete[] itemNameRecord;
+
+	return TRUE;
 }

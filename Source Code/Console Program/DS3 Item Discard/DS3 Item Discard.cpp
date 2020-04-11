@@ -82,7 +82,8 @@ int main()
 
 		printf_s("Welcome To DS3 Item Discard, Please Select What You'd Like To Do:\n"
 			"1. Allow Discard Through Item Params\n"
-			"2. Exit Program\n");
+			"2. Mod Information\n"
+			"3. Exit Program\n");
 
 		//Validate Input
 		if (!inputHandler(&userInput))
@@ -92,7 +93,8 @@ int main()
 				system("cls");
 				printf_s("Error! Invalid Input Was Detected, Please Reenter Choice:\n"
 					"1. Allow Discard Through Item Params\n"
-					"2. Exit Program\n");
+					"2. Mod Information\n"
+					"3. Exit Program\n");
 			} while (!inputHandler(&userInput));
 		}
 
@@ -129,7 +131,15 @@ int main()
 			system("pause");
 
 			break;
-		case 2:		//Exit Program
+		case 2:		//Basic Mod Information Program
+			printf_s("Author: EnlistedD\n");
+			printf_s("Mod Name: DS3 Item Discard\n");
+			printf_s("Mod Version: V. 1.0.1\n");
+			printf_s("A special thanks to u/LukeYui for help testing and help creating this mod\n");
+			printf_s("\n\nFor more information about this mod or to submit bug reports, go to: www.nexusmods.com/darksouls3/mods/469\n");
+			system("pause");
+			break;
+		case 3: 	//Exit Program
 			programActive = false;
 			break;
 		default:

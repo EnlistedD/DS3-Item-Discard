@@ -27,6 +27,9 @@
     <ClCompile Include="DS3 DLL Discard.cpp">
       <Filter>Source Files\code</Filter>
     </ClCompile>
+    <ClCompile Include="ItemScan.cpp">
+      <Filter>Source Files\code</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="dinput8.def">
@@ -43,9 +46,15 @@
     <MASM Include="DeleteItem.asm">
       <Filter>Source Files\_asm</Filter>
     </MASM>
+    <MASM Include="ItemName.asm">
+      <Filter>Source Files\_asm</Filter>
+    </MASM>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DS3 DLL Discard.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ItemScan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,0 +1,13 @@
+[Console Version]
+1. Added A Program Icon
+
+2. Added A "Mod Information" Option To The Program
+
+[DLL Version]
+1. Completely Reworked The Item Scan Feature, It Will Now Automatically Check Whether Or Not The Item Has A Valid Param ID, Check Item IDs Of Items Against A List To See If They're Valid Or Not, Check Upgrade Level On Weapons To See If They're Valid And It Will Identify Things Such As Multiple Estus Flasks Or Multiple Covenants And Give You The Option To Delete The Most Recently Added One In Your Inventory (Scan Feature Now Should Detect Most Invalid Items And Allow You To Automatically Delete Them, Although It May Miss Some And Could Detect False Positives Sometimes).
+
+2. Item Scan Feature Now Gives You Information About What Items It Flagged And Why (Example: Item ID 40000000 Flagged, Reason: Not On Valid Item List (Name: Example Item Name).
+
+3. Added A New Feature Which Allows You To List The Last 100 Items You Have Received, It Will Tell You The ID Of The Item, The Name Of The Item And Allow You To Delete The Item Through The Program.
+
+4. Fixed An Issue With The itemDelete Function Not Updating A Variable Correctly.

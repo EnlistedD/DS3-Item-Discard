@@ -148,9 +148,11 @@
   <ItemGroup>
     <ClCompile Include="dinput8.cpp" />
     <ClCompile Include="DS3 DLL Discard.cpp" />
+    <ClCompile Include="ItemScan.cpp" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="DeleteItem.asm" />
+    <MASM Include="ItemName.asm" />
     <MASM Include="ValidateItem.asm" />
     <None Include="dinput8.def" />
     <MASM Include="dinput8_asm.asm">
@@ -159,6 +161,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DS3 DLL Discard.h" />
+    <ClInclude Include="ItemScan.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
