@@ -1,0 +1,4 @@
+[DLL Version]
+1. Fixed A Lot Of False Flagging Issues With Weapons, There May Still Be Some False Positives, But They Should Be Heavily Reduced
+
+2. Added Storage Box Scanning To Option Two (Scan Entire Inventory For Invalid Items)

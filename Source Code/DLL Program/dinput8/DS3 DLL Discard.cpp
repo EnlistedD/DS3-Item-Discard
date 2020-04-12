@@ -56,7 +56,7 @@ int main()
 		printf_s("Welcome To DS3 Item Discard, Please Load A Character And Select What You'd Like To Do:\n"
 			"1. Allow Discard Through Item Params\n"
 			"2. Scan Entire Inventory For Invalid Items\n"
-			"3. List Recently Aquired Items\n"
+			"3. List Recently Acquired Items\n"
 			"4. Mod Information\n"
 			"5. Exit Program\n");
 
@@ -69,7 +69,7 @@ int main()
 				printf_s("Error! Invalid Input Was Detected, Please Reenter Choice:\n"
 					"1. Allow Discard Through Item Params\n"
 					"2. Scan Entire Inventory For Invalid Items\n"
-					"3. List Recently Aquired Items\n"
+					"3. List Recently Acquired Items\n"
 					"4. Mod Information\n"
 					"5. Exit Program\n");
 			} while (!inputHandler(&userInput));
@@ -123,12 +123,16 @@ int main()
 			{
 			case 'y':
 			case 'Y':
-				invalidItemsFound = scanInventory(procModule, FALSE);
+				printf_s("[Inventory Scan]\n");
+				invalidItemsFound = scanInventory(procModule, FALSE, FALSE);
+
+				printf_s("[Storage Box Scan]\n");
+				invalidItemsFound += scanInventory(procModule, FALSE, TRUE);
 
 				if (invalidItemsFound)
 				{
 					//Check Invalid Return
-					if (invalidItemsFound == ErrorInvalidPtr)
+					if (invalidItemsFound == (ErrorInvalidPtr * 2))
 					{
 						printf_s("Error scanning inventory! Program can't read character memory\n");
 						break;
@@ -144,7 +148,12 @@ int main()
 					{
 					case 'y':
 					case 'Y':
-						invalidItemsFound = scanInventory(procModule, TRUE);
+						printf_s("[Inventory Deletion]\n");
+						invalidItemsFound = scanInventory(procModule, TRUE, FALSE);
+
+						printf_s("[Storage Box Deletion]\n");
+						invalidItemsFound += scanInventory(procModule, TRUE, TRUE);
+
 						printf_s("Success! %d invalid items were successfully deleted!\n", invalidItemsFound);
 						break;
 					default:
@@ -193,7 +202,7 @@ int main()
 		case 4:		//Basic Mod Information Program
 			printf_s("Author: EnlistedD\n");
 			printf_s("Mod Name: DS3 Item Discard\n");
-			printf_s("Mod Version: V. 1.0.1\n");
+			printf_s("Mod Version: V. 1.0.2\n");
 			printf_s("A special thanks to u/LukeYui for help testing and help creating this mod\n");
 			printf_s("\n\nFor more information about this mod or to submit bug reports, go to: www.nexusmods.com/darksouls3/mods/469\n");
 			system("pause");
@@ -293,7 +302,7 @@ BOOL changeAllParamDiscard(DWORD64 pModule, OffsetStruct paramOffs, BYTE binaryV
 	return TRUE;
 }
 
-DWORD scanInventory(DWORD64 pModule, BOOL deleteFlag)
+DWORD scanInventory(DWORD64 pModule, BOOL deleteFlag, BOOL isStorageBox)
 {
 	//Vars
 	DWORD64 tempPtr = NULL, tempPtr2 = NULL, startAddr = NULL;
@@ -312,9 +321,18 @@ DWORD scanInventory(DWORD64 pModule, BOOL deleteFlag)
 
 	tempPtr2 = tempPtr;
 
-	//Start Addr
-	tempPtr = *(DWORD64*)(tempPtr + 0x3E8);
-	startAddr = tempPtr + 0x4;
+	//Get Start Addr Based On Storage Box Or Not
+	if (!isStorageBox)
+	{
+		tempPtr = *(DWORD64*)(tempPtr + 0x3E8);
+		startAddr = tempPtr + 0x4;
+	}
+	else
+	{
+		tempPtr = *(DWORD64*)(tempPtr + 0x7B0);
+		tempPtr = *(DWORD64*)(tempPtr + 0x48);
+		startAddr = tempPtr + 0x4;
+	}
 
 	//Get Max Items
 	tempPtr2 = *(DWORD64*)(tempPtr2 + 0x470);
@@ -329,7 +347,7 @@ DWORD scanInventory(DWORD64 pModule, BOOL deleteFlag)
 	//Loop To Scan For Items
 	do
 	{
-		DWORD currentItem, itemType, itemUpgrade, currItemCopy;
+		DWORD currentItem, itemType, itemUpgrade, currItemCopy, materialSetID, itemWOBuff;
 		DWORD itemBuffer[28];
 
 		//Item Valid Vars
@@ -377,8 +395,8 @@ DWORD scanInventory(DWORD64 pModule, BOOL deleteFlag)
 
 			/*
 			printf_s("\nCurrently Scanning Weapon:\n"
-				"Weapon ID: %11X\n"
-				"Weapon ID+: %11X\n"
+				"Weapon ID: %08X\n"
+				"Weapon ID+: %d\n"
 				"Upgrade Level:%d\n"
 				"Name: %ws\n", itemBuffer[0], itemBuffer[4], itemUpgrade, itemName.c_str());
 			*/
@@ -393,10 +411,76 @@ DWORD scanInventory(DWORD64 pModule, BOOL deleteFlag)
 					printf_s("Weapon ID %08X Flagged, Reason: Doesn't Have A Valid Param ID (Name: %ws)\n\n", currItemCopy, itemName.c_str());
 				else
 					printf_s("Deleting Invalid Weapon ID %08X (Name: %ws) (Reason: Doesn't Have A Valid Param ID)\n\n", currItemCopy, itemName.c_str());
+
+				//Delete Item If Flag Set
+				if (!itemIsValid && deleteFlag)
+					deleteItem((startAddr + (offsetRec - 0x4)));
+
+				//Early Return Because These Items Cause Issues
+				itemCount++;
+				offsetRec += 0x10;
+
+				continue;
+			}
+
+			//Get Rid Of Infusment & Upgrade Level For Check
+			tempPtr = itemBuffer[3];
+			tempPtr <<= 0x20;
+			tempPtr += itemBuffer[2];
+
+			itemWOBuff = *(DWORD*)(tempPtr + 0x5C);
+
+			//Filter Out Which Have Invalid orgWeaponIDs
+			if(itemWOBuff == 0xFFFFFFFF)
+				itemWOBuff = currItemCopy;
+			else
+			{
+				//printf_s("Weapon W/O Infusion/Buff: %d\n", itemWOBuff);
+
+				//Get Buffer For Item W/O Upgrade & Infusion
+				validateItem(itemBuffer, itemWOBuff, 0x140E33420);
+			}
+
+			//If Item Hasn't Been Flagged; Check ID
+			if (itemIsValid)
+			{
+				itemIsValid = false;
+
+				//Check Valid ID
+				for (int i = 0; i < (sizeof(validWeapon) / 4); i++)
+				{
+					if (itemWOBuff == validWeapon[i])
+					{
+						itemIsValid = true;
+						break;
+					}
+				}
+
+				//If Item Isn't Valid After Scan
+				if (!itemIsValid)
+				{
+					invalidItemAmt++;
+
+					if (!deleteFlag)
+						printf_s("Weapon ID %08X Flagged, Reason: Not On Valid Item List (Name: %ws)\n\n", currItemCopy, itemName.c_str());
+					else
+						printf_s("Deleting Invalid Weapon ID %08X (Name: %ws) (Reason: Not On Valid Item List)\n\n", currItemCopy, itemName.c_str());
+				}
+			}
+
+			//Get Upgrade Material
+			if (itemIsValid)
+			{
+				tempPtr = itemBuffer[3];
+				tempPtr <<= 0x20;
+				tempPtr += itemBuffer[2];
+
+				materialSetID = *(DWORD*)(tempPtr + 0x58);
+				//printf_s("Material Set ID: %d\n\n", materialSetID);
 			}
 
 			//Check Upgrade Level
-			if (itemBuffer[6] < 1600 && itemIsValid)
+			if (materialSetID == 0 && itemIsValid)
 			{
 				if (itemUpgrade > 10)
 				{
@@ -420,33 +504,6 @@ DWORD scanInventory(DWORD64 pModule, BOOL deleteFlag)
 						printf_s("Weapon ID %08X Flagged, Reason: Invalid Upgrade Level (Name: %ws)\n\n", currItemCopy, itemName.c_str());
 					else
 						printf_s("Deleting Invalid Weapon ID %08X (Name: %ws) (Reason: Invalid Upgrade Level)\n\n", currItemCopy, itemName.c_str());
-				}
-			}
-
-			//If Item Hasn't Been Flagged; Check ID
-			if (itemIsValid)
-			{
-				itemIsValid = false;
-
-				//Check Valid ID
-				for (int i = 0; i < (sizeof(validWeapon) / 4); i++)
-				{
-					if (itemBuffer[4] == validWeapon[i])
-					{
-						itemIsValid = true;
-						break;
-					}
-				}
-
-				//If Item Isn't Valid After Scan
-				if (!itemIsValid)
-				{
-					invalidItemAmt++;
-
-					if(!deleteFlag)
-						printf_s("Weapon ID %08X Flagged, Reason: Not On Valid Item List (Name: %ws)\n\n", currItemCopy, itemName.c_str());
-					else
-						printf_s("Deleting Invalid Weapon ID %08X (Name: %ws) (Reason: Not On Valid Item List)\n\n", currItemCopy, itemName.c_str());
 				}
 			}
 

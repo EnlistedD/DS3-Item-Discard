@@ -23,7 +23,7 @@ extern "C" VOID deleteItem(DWORD64 deleteAddr);
 
 void CreateConsole();
 BOOL changeAllParamDiscard(DWORD64 pModule, OffsetStruct paramOffs, BYTE binaryVal);
-DWORD scanInventory(DWORD64 pModule, BOOL deleteFlag);
+DWORD scanInventory(DWORD64 pModule, BOOL deleteFlag, BOOL isStorageBox);
 DWORD listRecentItems(DWORD64 pModule, DWORD amount);
 BOOL inputHandler(int * varAddr);
 int main();
