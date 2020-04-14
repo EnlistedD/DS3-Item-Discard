@@ -20,6 +20,7 @@ struct OffsetStruct
 
 extern "C" VOID validateItem(DWORD * returnBuffer, DWORD itemID, DWORD64 callAddr);
 extern "C" VOID deleteItem(DWORD64 deleteAddr);
+extern "C" VOID fixDarkSun();
 
 void CreateConsole();
 BOOL changeAllParamDiscard(DWORD64 pModule, OffsetStruct paramOffs, BYTE binaryVal);

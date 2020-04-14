@@ -49,6 +49,9 @@
     <MASM Include="ItemName.asm">
       <Filter>Source Files\_asm</Filter>
     </MASM>
+    <MASM Include="DarkSFix.asm">
+      <Filter>Source Files\_asm</Filter>
+    </MASM>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DS3 DLL Discard.h">

@@ -151,6 +151,7 @@
     <ClCompile Include="ItemScan.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <MASM Include="DarkSFix.asm" />
     <MASM Include="DeleteItem.asm" />
     <MASM Include="ItemName.asm" />
     <MASM Include="ValidateItem.asm" />

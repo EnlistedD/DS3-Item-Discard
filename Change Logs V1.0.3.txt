@@ -1,0 +1,2 @@
+[DLL Version]
+1. Added New Menu Option "4. Fix Other Cheats (Such As Infinite Death Loop)" Which Allows You To Fix The Infinite Death Loop Cheat & Aldritch Dark Sun Cheat

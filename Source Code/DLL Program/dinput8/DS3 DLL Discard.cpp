@@ -57,8 +57,9 @@ int main()
 			"1. Allow Discard Through Item Params\n"
 			"2. Scan Entire Inventory For Invalid Items\n"
 			"3. List Recently Acquired Items\n"
-			"4. Mod Information\n"
-			"5. Exit Program\n");
+			"4. Fix Other Cheats (Such As Infinite Death Loop)\n"
+			"5. Mod Information\n"
+			"6. Exit Program\n");
 
 		//Validate Input
 		if (!inputHandler(&userInput))
@@ -70,8 +71,9 @@ int main()
 					"1. Allow Discard Through Item Params\n"
 					"2. Scan Entire Inventory For Invalid Items\n"
 					"3. List Recently Acquired Items\n"
-					"4. Mod Information\n"
-					"5. Exit Program\n");
+					"4. Fix Other Cheats (Such As Infinite Death Loop)\n"
+					"5. Mod Information\n"
+					"6. Exit Program\n");
 			} while (!inputHandler(&userInput));
 		}
 
@@ -199,15 +201,80 @@ int main()
 			listRecentItems(procModule, recentAmount);
 
 			break;
-		case 4:		//Basic Mod Information Program
+		case 4:		//Fix For Dark Sun & Shadow Realm
+			do
+			{
+				printf_s("Please select which of the following you'd like to do:\n"
+					"0. Return To First Menu\n"
+					"1. Fix Infinite Black Screen Death Loop (Resets Bonfire To Highwall)\n"
+					"2. Fix Pontiff Dark Sun/Aldritch Soft Lock (Credit To LukeYui For Fix)\n");
+
+				//Input Error Handling
+				if (!inputHandler(&userInput))
+				{
+					do
+					{
+						printf_s("Error getting input! Please reselect which of the following you'd like to do:\n"
+							"0. Return To First Menu\n"
+							"1. Fix Infinite Black Screen Death Loop (Resets Bonfire To Highwall)\n"
+							"2. Fix Pontiff Dark Sun/Aldritch Soft Lock (Credit To LukeYui For Fix)\n");
+					} while (!inputHandler(&userInput));
+				}
+
+				system("cls");
+
+				DWORD64 tempPtr;
+
+				switch (userInput)
+				{
+				case 0:		//Exit Menu
+					break;
+				case 1:		//High Wall Of Lothric Bonfire Reset
+					tempPtr = *(DWORD64*)(procModule + 0x4743AB0);
+					*(DWORD*)(tempPtr + 0xACC) = 3002950;
+
+					printf_s("Bonfire Reset Successfully! Next Time You Die, You Will Spawn At The High Wall\n");
+					break;
+				case 2:		//Fix Dark Sun
+					printf_s("Alert! Using this option should fix the problem of the \"Dark Sun\" appearing at pontiff and Aldritch not being in the boss room\n"
+						"This fix should be 100 percent safe to use, but in order to work, it will have to teleport you to the Anor Londo bonfire, after that the issue\n"
+						"should be permanently fixed. Would you like to continue and teleport to Anor Londo? (Y/N) ");
+
+					std::cin >> charInput;
+
+					system("cls");
+
+					switch (charInput)
+					{
+					case 'y':
+					case 'Y':
+						fixDarkSun();
+
+						printf_s("Fix applied, you should teleport to the normal Anor Londo shortly, credit to u/LukeYui for creating this fix!\n");
+						break;
+					default:
+						printf_s("Fix cancelled, you won't be teleported to Anor Londo\n");
+					}
+
+					break;
+				default:
+					printf_s("Invalid Menu Choice! Please Enter \"0\", \"1\" or \"2\"\n");
+				}
+
+				system("pause");
+				system("cls");
+			} while (userInput != 0);
+
+			break;
+		case 5:		//Basic Mod Information Program
 			printf_s("Author: EnlistedD\n");
 			printf_s("Mod Name: DS3 Item Discard\n");
-			printf_s("Mod Version: V. 1.0.2\n");
+			printf_s("Mod Version: V. 1.0.3\n");
 			printf_s("A special thanks to u/LukeYui for help testing and help creating this mod\n");
 			printf_s("\n\nFor more information about this mod or to submit bug reports, go to: www.nexusmods.com/darksouls3/mods/469\n");
 			system("pause");
 			break;
-		case 5:		//Exit Program
+		case 6:		//Exit Program
 			programActive = false;
 			break;
 		default:
