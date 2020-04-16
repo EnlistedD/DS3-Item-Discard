@@ -1,4 +1,11 @@
 # DS3-Item-Discard
+(DISCLAIMER:
+Unfortunately I can't guarantee 100% that using this mod will keep you safe from a ban as a few people have reported still being banned after using this tool and as so; my recommendation is loading up a save back-up if possible and only using this tool if you don't have a save back-up or will lose a lot of progress from loading a save back-up; I am currently doing tests with invalid items to try and learn more about how bans with them work and to see if I can improve the program any, I highly recommend doing these things when you use this tool for the best results:
+
+1. Only use this tool in offline mode and then switch back to online mode after using this tool.
+2. Double, Triple or Quadruple check your inventory and storage box to make sure that neither contain any suspicious items after using this tool.
+3. I highly recommend playing online for a bit after using this tool (you don't have to play with other players, but go in online mode and play PVE through a few areas) as I am uncertain how item bans work, but I believe that the game will periodically send data to the server about items that you have in your inventory and playing on the same character that was affected by the invalid items for a few hours should hopefully send updated data about items in your inventory to the server.)
+
 # A Huge Thanks To u/LukeYui For DLL Template & Help With Invalid Item Scan Feature In The DLL
 
 # NOTE: I Highly Recommend Creating A Game Back-up Before Using This Program To Be Sure That No Mistakes Occur And This Program Works Properly For You (While This Program Should Be Safe To My Knowledge, Use In Offline Mode Is Highly Recommended For Extra Pre-caution).
