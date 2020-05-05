@@ -1,2 +1,5 @@
 [DLL Version]
-1. Added New Menu Option "4. Fix Other Cheats (Such As Infinite Death Loop)" Which Allows You To Fix The Infinite Death Loop Cheat & Aldritch Dark Sun Cheat
+1. Added A Small Change To Program Option One Which Changes A Problematic Item's Max Stack Size To 99 When Ran (?WeaponName? Arrow Item)
+2. Attempted To Fix Crash With Program Option Two (This May Not Be 100% Fixed Since I Wasn't Able To Recreate The Crash Myself)
+3. Added The Ability To List Items Recently Added To Your Storage Box When Using Option 3 (List Recently Acquired Items)
+4. Increased The Limit Of Recently Added Items That You Can List From 100 to 200

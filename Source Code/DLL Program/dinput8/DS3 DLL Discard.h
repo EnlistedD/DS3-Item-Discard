@@ -25,6 +25,6 @@ extern "C" VOID fixDarkSun();
 void CreateConsole();
 BOOL changeAllParamDiscard(DWORD64 pModule, OffsetStruct paramOffs, BYTE binaryVal);
 DWORD scanInventory(DWORD64 pModule, BOOL deleteFlag, BOOL isStorageBox);
-DWORD listRecentItems(DWORD64 pModule, DWORD amount);
+DWORD listRecentItems(DWORD64 pModule, DWORD amount, BOOL isStorageBox);
 BOOL inputHandler(int * varAddr);
 int main();

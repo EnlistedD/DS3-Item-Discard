@@ -9,8 +9,10 @@ int main()
 	bool programActive = true;
 	DWORD64 procModule = NULL;
 	DWORD invalidItemsFound = NULL;
+	DWORD currentAmtOfItems;
 	DWORD recentAmount = NULL;
-	//DWORD64 recentItemAddrs[100];
+	bool isStorageBox = false;
+	DWORD64 temporaryPtr;
 
 	//Param Offset Declarations
 	OffsetStruct goodsParam =
@@ -96,7 +98,21 @@ int main()
 				printf_s("Error Occured (Protector)! Program Failed To Read Param Memory...\n");
 
 			if (changeAllParamDiscard(procModule, weaponParam, 2))
+			{
+				//Display Success Message
 				printf_s("The Weapon Param Was Patched Successfully!\n");
+
+				//Patch Problematic Item
+				DWORD itemBuffer[28];
+				validateItem(itemBuffer, 0x00018128, 0x140E33420);
+
+				temporaryPtr = itemBuffer[3];
+				temporaryPtr <<= 0x20;
+				temporaryPtr += itemBuffer[2];
+
+				//Stack Size Change
+				*(BYTE*)(temporaryPtr + 0x231) = (BYTE)99;
+			}
 			else
 				printf_s("Error Occured (Weapon)! Program Failed To Read Param Memory...\n");
 
@@ -176,7 +192,50 @@ int main()
 
 		case 3:		//List Recently Aquired Items
 			
-			printf_s("Enter the amount of items you'd like to check (Min: 1, Max: 100)\n");
+			//Select Inventory Or Storage Box
+			printf_s("Please select what you'd like to do:\n"
+				"0. List Recent Inventory Items\n"
+				"1. List Recent Storage Box Items\n");
+
+			if (!inputHandler((int*)&isStorageBox))
+			{
+				printf_s("Error getting input! (Valid Input Example \"0\")\n");
+				system("pause");
+				break;
+			}
+			else if (isStorageBox < 0 || isStorageBox > 1)
+			{
+				printf_s("Error invalid choice selected!\n");
+				system("pause");
+				break;
+			}
+
+			system("cls");
+
+			//Get Current Amount Of Items
+			/*
+			temporaryPtr = *(DWORD64*)(procModule + chrBase);
+			if (temporaryPtr == NULL)
+			{
+				printf_s("Error pointer not readable (make sure you're on a loaded character)!\n");
+				system("pause");
+				break;
+			}
+			temporaryPtr = *(DWORD64*)(temporaryPtr + 0x10);
+			if (temporaryPtr == NULL)
+			{
+				printf_s("Error pointer not readable (make sure you're on a loaded character)!\n");
+				system("pause");
+				break;
+			}
+			
+			temporaryPtr = *(DWORD64*)(temporaryPtr + 0x470);
+			temporaryPtr = *(DWORD64*)(temporaryPtr + 0x10);
+
+			currentAmtOfItems = *(DWORD*)(temporaryPtr + 0x1C8);
+			*/
+
+			printf_s("Enter the amount of items you'd like to check (Min: 1, Max: 200)\n");
 
 			//Get Input
 			if (!inputHandler((int*)&recentAmount))
@@ -190,7 +249,7 @@ int main()
 			system("cls");
 
 			//Check Valid Amount
-			if (recentAmount < 1 || recentAmount > 100)
+			if (recentAmount < 1 || recentAmount > 200)
 			{
 				printf_s("Error, can't display list of less than 1 or greater than 100 items!\n");
 				system("pause");
@@ -198,7 +257,7 @@ int main()
 			}
 
 			//Scan Inventory
-			listRecentItems(procModule, recentAmount);
+			listRecentItems(procModule, recentAmount, isStorageBox);
 
 			break;
 		case 4:		//Fix For Dark Sun & Shadow Realm
@@ -269,7 +328,7 @@ int main()
 		case 5:		//Basic Mod Information Program
 			printf_s("Author: EnlistedD\n");
 			printf_s("Mod Name: DS3 Item Discard\n");
-			printf_s("Mod Version: V. 1.0.3\n");
+			printf_s("Mod Version: V. 1.0.4\n");
 			printf_s("A special thanks to u/LukeYui for help testing and help creating this mod\n");
 			printf_s("\n\nFor more information about this mod or to submit bug reports, go to: www.nexusmods.com/darksouls3/mods/469\n");
 			system("pause");
@@ -1051,7 +1110,7 @@ DWORD scanInventory(DWORD64 pModule, BOOL deleteFlag, BOOL isStorageBox)
 	return invalidItemAmt;
 }
 
-DWORD listRecentItems(DWORD64 pModule, DWORD amount)
+DWORD listRecentItems(DWORD64 pModule, DWORD amount, BOOL isStorageBox)
 {
 	//Vars
 	DWORD64 tempPtr = NULL, tempPtr2 = NULL, startAddr = NULL;
@@ -1084,9 +1143,18 @@ DWORD listRecentItems(DWORD64 pModule, DWORD amount)
 
 	tempPtr2 = tempPtr;
 
-	//Start Addr
-	tempPtr = *(DWORD64*)(tempPtr + 0x3E8);
-	startAddr = tempPtr + 0x4;
+	//Get Start Addr Based On Storage Box Or Not
+	if (!isStorageBox)
+	{
+		tempPtr = *(DWORD64*)(tempPtr + 0x3E8);
+		startAddr = tempPtr + 0x4;
+	}
+	else
+	{
+		tempPtr = *(DWORD64*)(tempPtr + 0x7B0);
+		tempPtr = *(DWORD64*)(tempPtr + 0x48);
+		startAddr = tempPtr + 0x4;
+	}
 
 	//Get Max Items
 	tempPtr2 = *(DWORD64*)(tempPtr2 + 0x470);
@@ -1169,7 +1237,7 @@ DWORD listRecentItems(DWORD64 pModule, DWORD amount)
 
 	printf_s("\n\nProgram Sucessfully Finished Printing Out Recent Items!\n");
 	printf_s("\nPLEASE NOTE! If you scanned far back enough (far back to the point where you see your original armour\n");
-	printf_s("and original estus flask, you may see 1 ?GoodsName? item and a few \"Fists\" items\n");
+	printf_s("and original estus flask) you may see 1 ?GoodsName? item and a few \"Fists\" items\n");
 	printf_s("deletion of these items are not recommended as these items automatically spawn in your inventory when\n");
 	printf_s("you create a new character.\n\n");
 
